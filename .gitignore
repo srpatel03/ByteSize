@@ -1,0 +1,21 @@
+# Streamlit secrets (Contains API Keys and Database URLs)
+.streamlit/secrets.toml
+.streamlit/config.toml
+
+# Python Caches & Artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+dist/
+build/
+*.egg-info/
