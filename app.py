@@ -862,7 +862,8 @@ with tab_insights:
             with col1:
                 st.markdown("#### Calorie Intake (Per Day)")
                 if not df_daily_food.empty:
-                    df_daily_sorted = df_daily_food.sort_values("Date")
+                    df_daily_sorted = df_daily_food.sort_values("Date").copy()
+                    df_daily_sorted["Date"] = df_daily_sorted["Date"].dt.strftime("%Y-%m-%d")
                     st.bar_chart(df_daily_sorted, x="Date", y="Calories")
                 else:
                     st.caption("No food records available.")
@@ -872,7 +873,8 @@ with tab_insights:
                     df_weight_daily = df_weight.groupby(df_weight["date"].dt.date)["weight"].mean().reset_index()
                     df_weight_daily.columns = ["Date", "Weight"]
                     df_weight_daily["Date"] = pd.to_datetime(df_weight_daily["Date"])
-                    df_weight_sorted = df_weight_daily.sort_values("Date")
+                    df_weight_sorted = df_weight_daily.sort_values("Date").copy()
+                    df_weight_sorted["Date"] = df_weight_sorted["Date"].dt.strftime("%Y-%m-%d")
                     if len(df_weight_sorted) > 1:
                         st.line_chart(df_weight_sorted, x="Date", y="Weight")
                     else:
@@ -891,6 +893,7 @@ with tab_insights:
                     df_weekly_food["Week Starting"] = df_weekly_food["Date"].dt.to_period("W").dt.start_time
                     df_weekly_avg = df_weekly_food.groupby("Week Starting")["Calories"].mean().reset_index()
                     df_weekly_avg.columns = ["Week Starting", "Average Daily Calories"]
+                    df_weekly_avg["Week Starting"] = df_weekly_avg["Week Starting"].dt.strftime("%Y-%m-%d")
                     st.bar_chart(df_weekly_avg, x="Week Starting", y="Average Daily Calories")
                 else:
                     st.caption("No nutrition records available.")
@@ -901,6 +904,7 @@ with tab_insights:
                     df_weekly_w["Week Starting"] = df_weekly_w["date"].dt.to_period("W").dt.start_time
                     df_weekly_w_avg = df_weekly_w.groupby("Week Starting")["weight"].mean().reset_index()
                     df_weekly_w_avg.columns = ["Week Starting", "Average Weight"]
+                    df_weekly_w_avg["Week Starting"] = df_weekly_w_avg["Week Starting"].dt.strftime("%Y-%m-%d")
                     if len(df_weekly_w_avg) > 1:
                         st.line_chart(df_weekly_w_avg, x="Week Starting", y="Average Weight")
                     else:
@@ -918,6 +922,7 @@ with tab_insights:
                     df_monthly_food["Month Starting"] = df_monthly_food["Date"].dt.to_period("M").dt.start_time
                     df_monthly_avg = df_monthly_food.groupby("Month Starting")["Calories"].mean().reset_index()
                     df_monthly_avg.columns = ["Month Starting", "Average Daily Calories"]
+                    df_monthly_avg["Month Starting"] = df_monthly_avg["Month Starting"].dt.strftime("%Y-%m-%d")
                     st.bar_chart(df_monthly_avg, x="Month Starting", y="Average Daily Calories")
                 else:
                     st.caption("No nutrition records available.")
@@ -928,6 +933,7 @@ with tab_insights:
                     df_monthly_w["Month Starting"] = df_monthly_w["date"].dt.to_period("M").dt.start_time
                     df_monthly_w_avg = df_monthly_w.groupby("Month Starting")["weight"].mean().reset_index()
                     df_monthly_w_avg.columns = ["Month Starting", "Average Weight"]
+                    df_monthly_w_avg["Month Starting"] = df_monthly_w_avg["Month Starting"].dt.strftime("%Y-%m-%d")
                     if len(df_monthly_w_avg) > 1:
                         st.line_chart(df_monthly_w_avg, x="Month Starting", y="Average Weight")
                     else:
@@ -1037,7 +1043,7 @@ with tab_insights:
                     height=450,
                     paper_bgcolor="rgba(0,0,0,0)",
                     plot_bgcolor="rgba(0,0,0,0)",
-                    xaxis=dict(showgrid=True, gridcolor="rgba(128,128,128,0.15)"),
+                    xaxis=dict(showgrid=True, gridcolor="rgba(128,128,128,0.15)", type="category"),
                     yaxis=dict(title="Calorie Intake (kcal/day)", showgrid=True, gridcolor="rgba(128,128,128,0.15)"),
                     yaxis2=dict(title="Body Weight", showgrid=False)
                 )
