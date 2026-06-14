@@ -871,6 +871,7 @@ with tab_insights:
                         st.scatter_chart(df_weight_sorted, x="Date", y="Weight")
                 else:
                     st.caption("No weight logs available.")
+
                     
         # View Week
         with view_week:
@@ -1166,3 +1167,54 @@ with tab_insights:
                 </div>
             </div>
             """, unsafe_allow_html=True)
+
+        st.markdown("---")
+        st.markdown("### 🔍 Retrieve Historical Food Entry Logs")
+        st.markdown("<p style='font-size:0.9rem; color:#94a3b8;'>Select a start and end date to retrieve a complete list of your past logged food entries.</p>", unsafe_allow_html=True)
+        
+        # Select date range
+        range_cols = st.columns([1, 2])
+        with range_cols[0]:
+            selected_range = st.date_input(
+                "Date Range Selector",
+                value=(date.today() - timedelta(days=7), date.today()),
+                help="Select a range of dates to pull entries for."
+            )
+        
+        # Parse dates
+        if isinstance(selected_range, (tuple, list)) and len(selected_range) == 2:
+            q_start, q_end = selected_range
+        elif isinstance(selected_range, (tuple, list)) and len(selected_range) == 1:
+            q_start = selected_range[0]
+            q_end = q_start
+        else:
+            q_start = selected_range
+            q_end = selected_range
+            
+        # Perform query
+        try:
+            hist_res = supabase_client.table("food_logs") \
+                .select("*") \
+                .eq("user_id", st.session_state.user.id) \
+                .gte("date", str(q_start)) \
+                .lte("date", str(q_end)) \
+                .order("date", desc=True) \
+                .execute()
+            hist_logs = hist_res.data if hist_res.data else []
+        except Exception as e:
+            st.error(f"Error fetching historical logs: {e}")
+            hist_logs = []
+            
+        # Render logs
+        if hist_logs:
+            df_hist = pd.DataFrame(hist_logs)
+            df_hist["date"] = pd.to_datetime(df_hist["date"]).dt.strftime("%Y-%m-%d")
+            df_hist = df_hist[["date", "food_name", "meal_type", "calories"]]
+            df_hist.columns = ["Date", "Food Name", "Meal Type", "Calories (kcal)"]
+            
+            st.dataframe(df_hist, use_container_width=True, hide_index=True)
+            
+            total_range_cals = df_hist["Calories (kcal)"].sum()
+            st.markdown(f"**Total Calorie Intake in Range:** {total_range_cals} kcal")
+        else:
+            st.info("No food logs found for the selected date range.")
