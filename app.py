@@ -365,14 +365,18 @@ if st.session_state.user and not st.session_state.profile:
                 step=0.5,
                 help="Your starting body weight today."
             )
-            target_weight = st.number_input(
-                "Target Body Weight",
-                min_value=30.0,
-                max_value=400.0,
-                value=150.0,
-                step=0.5,
-                help="Your target weight goals."
-            )
+            st.markdown("🥑 **Dietary Preferences & Exclusions**")
+            popular_options = [
+                "Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free",
+                "Keto", "Paleo", "Halal", "Kosher",
+                "Low-Carb", "Nut-Free", "Shellfish-Free"
+            ]
+            selected_prefs = []
+            pref_cols = st.columns(3)
+            for idx, option in enumerate(popular_options):
+                col = pref_cols[idx % 3]
+                if col.checkbox(option, key=f"onboard_pref_{option}"):
+                    selected_prefs.append(option)
             
             if st.button("Complete Onboarding", use_container_width=True):
                 try:
@@ -381,6 +385,7 @@ if st.session_state.user and not st.session_state.profile:
                         "id": st.session_state.user.id,
                         "target_calories": int(target_calories),
                         "target_weight": float(target_weight),
+                        "food_preferences": selected_prefs,
                         "is_onboarded": True
                     }
                     profile_res = supabase_client.table("profiles").insert(profile_payload).execute()
@@ -413,12 +418,16 @@ with st.sidebar:
     streak_val = calculate_streak(st.session_state.user.id)
     streak_badge = f"🔥 <strong>{streak_val}-Day Streak</strong>" if streak_val > 0 else "❄️ 0-Day Streak"
     
+    prefs_list = st.session_state.profile.get("food_preferences") or []
+    prefs_str = ", ".join(prefs_list) if prefs_list else "None"
+    
     st.markdown(f"""
     <div class='sidebar-info'>
         <strong>Session:</strong><br>{st.session_state.user.email}<br>
         <strong>Streak:</strong> {streak_badge}<br>
         <strong>Daily Budget:</strong><br>{st.session_state.profile['target_calories']} kcal<br>
-        <strong>Target Weight:</strong><br>{st.session_state.profile['target_weight']}
+        <strong>Target Weight:</strong><br>{st.session_state.profile['target_weight']}<br>
+        <strong>Diet Preferences:</strong><br>{prefs_str}
     </div>
     """, unsafe_allow_html=True)
     
@@ -462,17 +471,37 @@ if st.session_state.editing_profile:
             step=0.5
         )
         
+        st.markdown("🥑 **Dietary Preferences & Exclusions**")
+        popular_options = [
+            "Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free",
+            "Keto", "Paleo", "Halal", "Kosher",
+            "Low-Carb", "Nut-Free", "Shellfish-Free"
+        ]
+        selected_prefs = []
+        existing_prefs = st.session_state.profile.get("food_preferences") or []
+        if not isinstance(existing_prefs, list):
+            existing_prefs = list(existing_prefs)
+            
+        pref_cols = st.columns(3)
+        for idx, option in enumerate(popular_options):
+            col = pref_cols[idx % 3]
+            is_checked = option in existing_prefs
+            if col.checkbox(option, value=is_checked, key=f"edit_pref_{option}"):
+                selected_prefs.append(option)
+        
         c_save, c_cancel = st.columns(2)
         with c_save:
             if st.button("Save Changes", use_container_width=True):
                 try:
                     res = supabase_client.table("profiles").update({
                         "target_calories": int(new_calories),
-                        "target_weight": float(new_weight)
+                        "target_weight": float(new_weight),
+                        "food_preferences": selected_prefs
                     }).eq("id", st.session_state.user.id).execute()
                     if res.data:
                         st.session_state.profile = res.data[0]
                         st.session_state.editing_profile = False
+                        st.session_state.tip_cache = {}
                         st.success("Goals updated successfully!")
                         st.rerun()
                 except Exception as e:
@@ -498,14 +527,16 @@ class MealItem(BaseModel):
 class ParsedMeals(BaseModel):
     items: List[MealItem] = Field(description="List of food items parsed from description")
 
-def generate_eating_tip(target: int, logged: int, remaining: int) -> str:
+def generate_eating_tip(target: int, logged: int, remaining: int, food_preferences: list = None) -> str:
     """Invokes Gemini to output a quick encouraging macro-eating tip."""
     try:
         client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+        pref_str = f" User dietary preferences/exclusions: {', '.join(food_preferences)}." if food_preferences else ""
         prompt = (
             f"Daily target: {target} kcal. Logged today: {logged} kcal. "
-            f"Remaining: {remaining} kcal. "
+            f"Remaining: {remaining} kcal.{pref_str} "
             "Write a dynamic, helpful, single-sentence strategic eating tip or encouragement based on this remaining budget. "
+            "Ensure the tip respects their dietary preferences/exclusions (e.g. do not suggest dairy if dairy-free, meat if vegetarian). "
             "Do not use markdown formatting, bolding, or introductory text. Return only the single sentence."
         )
         response = client.models.generate_content(
@@ -550,7 +581,8 @@ with tab_log:
         tip = st.session_state.tip_cache[cache_key]
     else:
         with st.spinner("AI coach is crafting today's recommendation..."):
-            tip = generate_eating_tip(target_cal, total_logged, remaining_cal)
+            user_prefs = st.session_state.profile.get("food_preferences") or []
+            tip = generate_eating_tip(target_cal, total_logged, remaining_cal, user_prefs)
             st.session_state.tip_cache[cache_key] = tip
             
     st.markdown(f"""
@@ -1098,13 +1130,18 @@ with tab_insights:
                         f"Weekly patterns: {wd_vs_we}"
                     )
                     
+                    user_prefs = st.session_state.profile.get("food_preferences") or []
+                    prefs_str = f"User's dietary preferences & exclusions: {', '.join(user_prefs)}." if user_prefs else "User has no specific dietary preferences or exclusions."
+                    
                     # Prompt Gemini
                     client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
                     system_prompt = (
                         "You are an expert, supportive dietitian and wellness advisor. "
+                        f"Important constraint: {prefs_str} "
                         "Given the user's historical fitness summaries, construct a bulleted set "
                         "of 3-4 highly encouraging, data-backed feedback points. Suggest concrete adjustments "
-                        "based on their target goals. Do not output raw text blocks. Keep insights analytical and easy to digest."
+                        "based on their target goals. Ensure that any meal, food, or recipe suggestions strictly "
+                        "comply with their dietary preferences and exclusions. Do not output raw text blocks. Keep insights analytical and easy to digest."
                     )
                     
                     response = client.models.generate_content(
