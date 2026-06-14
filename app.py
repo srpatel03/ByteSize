@@ -369,6 +369,14 @@ if st.session_state.user and not st.session_state.profile:
                 step=0.5,
                 help="Your starting body weight today."
             )
+            target_weight = st.number_input(
+                "Target Body Weight",
+                min_value=30.0,
+                max_value=400.0,
+                value=150.0,
+                step=0.5,
+                help="Your target weight goals."
+            )
             st.markdown("🥑 **Dietary Preferences & Exclusions**")
             popular_options = [
                 "Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free",
