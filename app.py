@@ -281,10 +281,12 @@ if not st.session_state.user:
     # Login Tab
     with auth_action[0]:
         with st.container(border=True):
-            login_email = st.text_input("Email Address", key="login_email")
-            login_password = st.text_input("Password", type="password", key="login_password")
-            
-            if st.button("Authenticate", use_container_width=True):
+            with st.form("login_form", border=False):
+                login_email = st.text_input("Email Address", key="login_email")
+                login_password = st.text_input("Password", type="password", key="login_password")
+                submit_login = st.form_submit_button("Authenticate", use_container_width=True)
+                
+            if submit_login:
                 if not login_email or not login_password:
                     st.error("Fields cannot be blank.")
                 else:
@@ -308,11 +310,13 @@ if not st.session_state.user:
     # Sign Up Tab
     with auth_action[1]:
         with st.container(border=True):
-            signup_email = st.text_input("Email Address", key="signup_email")
-            signup_password = st.text_input("Password", type="password", key="signup_password")
-            signup_confirm = st.text_input("Confirm Password", type="password", key="signup_confirm")
-            
-            if st.button("Register Account", use_container_width=True):
+            with st.form("signup_form", border=False):
+                signup_email = st.text_input("Email Address", key="signup_email")
+                signup_password = st.text_input("Password", type="password", key="signup_password")
+                signup_confirm = st.text_input("Confirm Password", type="password", key="signup_confirm")
+                submit_signup = st.form_submit_button("Register Account", use_container_width=True)
+                
+            if submit_signup:
                 if not signup_email or not signup_password:
                     st.error("Fields cannot be blank.")
                 elif signup_password != signup_confirm:
