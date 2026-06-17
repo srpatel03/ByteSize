@@ -128,6 +128,11 @@ div.stButton > button:active {
         font-size: 0.9rem !important;
     }
 }
+
+/* Hide Cookie Controller Iframe */
+div[data-testid='element-container']:has(iframe[title='streamlit_cookies_controller.cookie_controller']) {
+    display: none;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -138,6 +143,7 @@ try:
     from supabase import create_client, Client
     from google import genai
     from google.genai import types
+    from streamlit_cookies_controller import CookieController
 except ImportError as e:
     st.error(f"Required package not found: {e}. Please run 'pip install -r requirements.txt'")
     st.stop()
@@ -175,6 +181,9 @@ if "tip_cache" not in st.session_state:
     st.session_state.tip_cache = {}
 if "file_uploader_key" not in st.session_state:
     st.session_state.file_uploader_key = 0
+
+# Initialize Cookie Controller
+cookie_controller = CookieController()
 
 
 def check_profile(user_id: str):
@@ -247,6 +256,14 @@ def sign_out():
         supabase_client.auth.sign_out()
     except Exception:
         pass
+        
+    # Clear cookies
+    try:
+        cookie_controller.remove("sb_access_token")
+        cookie_controller.remove("sb_refresh_token")
+    except Exception:
+        pass
+        
     st.session_state.user = None
     st.session_state.session = None
     st.session_state.profile = None
@@ -268,6 +285,46 @@ def confirm_reset_dialog():
     with c2:
         if st.button("Cancel", use_container_width=True):
             st.rerun()
+
+# -------------------------------------------------------------
+# Auto-Login Session Restoration via Cookies
+# -------------------------------------------------------------
+if not st.session_state.user:
+    # Read cookies natively and synchronously from request headers
+    access_token = st.context.cookies.get("sb_access_token")
+    refresh_token = st.context.cookies.get("sb_refresh_token")
+    
+    # Fallback to cookie controller if native cookies are not yet populated
+    if not access_token or not refresh_token:
+        access_token = cookie_controller.get("sb_access_token")
+        refresh_token = cookie_controller.get("sb_refresh_token")
+        
+    if access_token and refresh_token:
+        try:
+            res = supabase_client.auth.set_session(access_token=access_token, refresh_token=refresh_token)
+            if res.user:
+                st.session_state.user = res.user
+                st.session_state.session = res.session
+                
+                # Fetch and store profile
+                profile = check_profile(res.user.id)
+                if profile:
+                    st.session_state.profile = profile
+                
+                # Save refreshed tokens back to cookies (30 days expiration)
+                try:
+                    cookie_controller.set("sb_access_token", res.session.access_token, expires=datetime.now() + timedelta(days=30))
+                    cookie_controller.set("sb_refresh_token", res.session.refresh_token, expires=datetime.now() + timedelta(days=30))
+                except Exception:
+                    pass
+                st.rerun()
+        except Exception:
+            # Clear invalid/expired cookies
+            try:
+                cookie_controller.remove("sb_access_token")
+                cookie_controller.remove("sb_refresh_token")
+            except Exception:
+                pass
 
 # -------------------------------------------------------------
 # Authentication Flow Interface
@@ -298,6 +355,14 @@ if not st.session_state.user:
                         if res.user:
                             st.session_state.user = res.user
                             st.session_state.session = res.session
+                            
+                            # Save session to cookies for 30 days
+                            try:
+                                cookie_controller.set("sb_access_token", res.session.access_token, expires=datetime.now() + timedelta(days=30))
+                                cookie_controller.set("sb_refresh_token", res.session.refresh_token, expires=datetime.now() + timedelta(days=30))
+                            except Exception:
+                                pass
+                                
                             # Check and cache profile
                             profile = check_profile(res.user.id)
                             if profile:
@@ -332,6 +397,12 @@ if not st.session_state.user:
                             if res.session:
                                 st.session_state.user = res.user
                                 st.session_state.session = res.session
+                                # Save session to cookies for 30 days
+                                try:
+                                    cookie_controller.set("sb_access_token", res.session.access_token, expires=datetime.now() + timedelta(days=30))
+                                    cookie_controller.set("sb_refresh_token", res.session.refresh_token, expires=datetime.now() + timedelta(days=30))
+                                except Exception:
+                                    pass
                                 st.rerun()
                     except Exception as e:
                         st.error(f"Registration Failed: {e}")
