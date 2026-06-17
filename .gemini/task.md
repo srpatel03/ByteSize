@@ -64,3 +64,18 @@
     - [x] Format date axes as strings in Weekly Averages charts in `app.py`
     - [x] Format date axes as strings in Monthly Trends charts in `app.py`
     - [x] Verify compiling and test
+- [x] Persistent Login (Remember Me) Session Management
+    - [x] Install `streamlit-cookies-controller` and configure python dependencies in `requirements.txt`
+    - [x] Initialize global CookieController and custom CSS hide overrides in `app.py`
+    - [x] Implement native synchronous cookie reading (`st.context.cookies`) for instant auto-login
+    - [x] Write tokens to cookies on successful Login and Registration flows (30-day expiration)
+    - [x] Clear tokens from cookies on user Sign Out helper action
+    - [x] Verify compilation compiles cleanly with zero syntax/import errors
+- [x] Implement Edit & Delete Logged Records
+    - [x] Create weight delete confirmation dialog (`confirm_delete_weight_dialog`) in `app.py`
+    - [x] Modify Tab 1 weight logging card layout and actions (Update / Delete) in `app.py`
+    - [x] Modify Tab 2 historical search query to retrieve primary key IDs in `app.py`
+    - [x] Convert history dataframe to `st.data_editor` with boolean delete checkbox column in `app.py`
+    - [x] Implement Save Changes button and database sync logic for food logs in `app.py`
+    - [x] Create persistent weight update/delete notifications in `st.session_state`
+    - [x] Verify compiling and compile test

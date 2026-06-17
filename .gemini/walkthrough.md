@@ -145,3 +145,42 @@ We adjusted all chart formatting rules to remove granular hour ticks and sub-day
 ### 2. Plotly Weight vs. Calorie Trends Graph
 - Explicitly configured the Plotly layout to treat the X-axis as category data by adding `type="category"` to the `xaxis` layout parameter.
 - This eliminates timestamp interpolation, ensuring the X-axis only displays the formatted date labels without empty fractional ticks.
+
+---
+
+## Persistent Login (Remember Me) Session Management
+
+We implemented a full cookie-based user session manager to preserve user authentication state across browser refreshes and tab closures.
+
+### 1. Dependencies & Cookie Controller
+- Installed and registered `streamlit-cookies-controller` inside Python [requirements.txt](file:///c:/Users/srpat/Projects/ByteSize-AI/requirements.txt).
+- Set up a global `CookieController` instance inside [app.py](file:///c:/Users/srpat/Projects/ByteSize-AI/app.py) to manage browser-side cookie parameters, combined with inline CSS overrides to clean up and hide component iframes from page views.
+
+### 2. Native Synchronous Session Restoration
+- Replaced custom client-side asynchronous checking loops with Streamlit's native `st.context.cookies` API.
+- Because `st.context.cookies` reads standard HTTP request headers sent by the client during connection handshakes, the application evaluates credentials synchronously on the very first frame check.
+- Bypasses any asynchronous loading spinner flags. Logged-in users are routed straight to their tracker dashboard on the very first page render with zero page lag or flashing.
+
+### 3. Integrated Authentication Hook Actions
+- **Secure Login & User Registration**: Captures valid user sessions and writes the corresponding `sb_access_token` and `sb_refresh_token` to browser cookies (defined with a 30-day expiration date).
+- **Secure Log Out**: Clearing the session removes active tokens from the user's browser, forcing a manual credentials prompt on their next application visit.
+
+---
+
+## Edit & Delete Logged Records
+
+We implemented direct controls to edit or delete logged entries for both food consumption and scale weights.
+
+### 1. Scale Weight Deletion & Modification (Tab 1 - Log Intake)
+- Modified the weight logging widget to remain enabled even if a record exists for the selected date.
+- Shows two side-by-side action buttons: `Update Weight` (to modify the entry) and `Delete Entry` (to remove it).
+- Implemented `@st.dialog("Confirm Delete Weight")` to ask the user for confirmation before purging the database log, clearing cached streak observations, and reloading the interface.
+- Added persistent weight update, record, and deletion success prompts via `st.session_state` that display right inside the weight container to keep the user informed.
+
+### 2. Historical Food Logs Modification & Deletion (Tab 2 - History & Insights)
+- Converted the query explorer search table from a read-only `st.dataframe` to an interactive `st.data_editor` grid, capturing database primary key IDs hidden from the user (`"id": None`).
+- Added a visual `"Delete?"` boolean checkbox column.
+- Rendered a `Save Changes to Database` button. Saving compiles:
+  - Rows with `Delete` checked are bulk-deleted from Supabase.
+  - Rows with modified cells (comparing values to original query states) are bulk-updated in Supabase.
+  - Total Calories metrics and charts clear their local data caches and reload instantly.

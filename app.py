@@ -181,6 +181,8 @@ if "tip_cache" not in st.session_state:
     st.session_state.tip_cache = {}
 if "file_uploader_key" not in st.session_state:
     st.session_state.file_uploader_key = 0
+if "weight_notification" not in st.session_state:
+    st.session_state.weight_notification = None
 
 # Initialize Cookie Controller
 cookie_controller = CookieController()
@@ -282,6 +284,24 @@ def confirm_reset_dialog():
             if "file_uploader_key" in st.session_state:
                 st.session_state.file_uploader_key += 1
             st.rerun()
+    with c2:
+        if st.button("Cancel", use_container_width=True):
+            st.rerun()
+
+@st.dialog("Confirm Delete Weight")
+def confirm_delete_weight_dialog(date_str: str):
+    st.write(f"Are you sure you want to delete your weight record for **{date_str}**?")
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("Yes, Delete", use_container_width=True):
+            try:
+                res = supabase_client.table("weight_logs").delete().eq("user_id", st.session_state.user.id).eq("date", date_str).execute()
+                if res.data:
+                    st.cache_data.clear()
+                    st.session_state.weight_notification = "Weight entry deleted successfully!"
+                    st.rerun()
+            except Exception as e:
+                st.error(f"Failed to delete weight log: {e}")
     with c2:
         if st.button("Cancel", use_container_width=True):
             st.rerun()
@@ -840,18 +860,43 @@ with tab_log:
             weight_logged = False
             logged_w = 0.0
             
-        wc1, wc2 = st.columns([3, 1])
-        with wc1:
-            if weight_logged:
+        # Display weight logging or update notifications
+        if "weight_notification" in st.session_state and st.session_state.weight_notification:
+            st.success(st.session_state.weight_notification)
+            st.session_state.weight_notification = None
+
+        if weight_logged:
+            wc1, wc2, wc3 = st.columns([2, 1, 1])
+            with wc1:
                 weight_input = st.number_input(
                     "Current Weight Number",
                     min_value=0.0,
                     max_value=600.0,
                     value=logged_w,
-                    disabled=True,
-                    help="Weight has already been logged for this date."
+                    step=0.1,
+                    key=f"weight_input_{selected_date}",
+                    help="Enter body weight for selected target date."
                 )
-            else:
+            with wc2:
+                st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True) # Spacer
+                if st.button("Update Weight", key=f"update_weight_{selected_date}", use_container_width=True):
+                    try:
+                        res = supabase_client.table("weight_logs").update({
+                            "weight": float(weight_input)
+                        }).eq("user_id", st.session_state.user.id).eq("date", str(selected_date)).execute()
+                        if res.data:
+                            st.cache_data.clear()
+                            st.session_state.weight_notification = f"Weight successfully updated to {weight_input} for {selected_date}!"
+                            st.rerun()
+                    except Exception as e:
+                        st.error(f"Failed to update weight: {e}")
+            with wc3:
+                st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True) # Spacer
+                if st.button("Delete Entry", key=f"delete_weight_{selected_date}", use_container_width=True):
+                    confirm_delete_weight_dialog(str(selected_date))
+        else:
+            wc1, wc2 = st.columns([3, 1])
+            with wc1:
                 weight_input = st.number_input(
                     "Current Weight Number",
                     min_value=0.0,
@@ -861,12 +906,9 @@ with tab_log:
                     key=f"weight_input_{selected_date}",
                     help="Enter body weight for selected target date."
                 )
-        with wc2:
-            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True) # Spacer
-            if weight_logged:
-                st.button("Logged for Today", disabled=True, use_container_width=True)
-            else:
-                if st.button("Record Weight", use_container_width=True):
+            with wc2:
+                st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True) # Spacer
+                if st.button("Record Weight", key=f"record_weight_{selected_date}", use_container_width=True):
                     if weight_input <= 0:
                         st.error("Please enter a valid weight record.")
                     else:
@@ -879,7 +921,7 @@ with tab_log:
                             res = supabase_client.table("weight_logs").insert(weight_payload).execute()
                             if res.data:
                                 st.cache_data.clear()
-                                st.success(f"Weight of {weight_input} successfully logged for {selected_date}!")
+                                st.session_state.weight_notification = f"Weight of {weight_input} successfully logged for {selected_date}!"
                                 st.rerun()
                         except Exception as e:
                             st.error(f"Failed to record weight: {e}")
@@ -1293,13 +1335,69 @@ with tab_insights:
         # Render logs
         if hist_logs:
             df_hist = pd.DataFrame(hist_logs)
-            df_hist["date"] = pd.to_datetime(df_hist["date"]).dt.strftime("%Y-%m-%d")
-            df_hist = df_hist[["date", "food_name", "meal_type", "calories"]]
-            df_hist.columns = ["Date", "Food Name", "Meal Type", "Calories (kcal)"]
+            df_hist["date_formatted"] = pd.to_datetime(df_hist["date"]).dt.strftime("%Y-%m-%d")
             
-            st.dataframe(df_hist, use_container_width=True, hide_index=True)
+            # Construct UI representation (including ID)
+            df_hist_ui = df_hist[["id", "date_formatted", "food_name", "meal_type", "calories"]].copy()
+            df_hist_ui.columns = ["id", "Date", "Food Name", "Meal Type", "Calories (kcal)"]
+            df_hist_ui["Delete"] = False # Default checkbox column to False
             
-            total_range_cals = df_hist["Calories (kcal)"].sum()
+            # Track edits
+            edited_hist_df = st.data_editor(
+                df_hist_ui,
+                column_config={
+                    "id": None, # Hide primary key ID column from display
+                    "Date": st.column_config.TextColumn("Date", disabled=True),
+                    "Food Name": st.column_config.TextColumn("Food Name", required=True),
+                    "Meal Type": st.column_config.SelectboxColumn("Meal Type", options=["breakfast", "lunch", "dinner", "snack"], required=True),
+                    "Calories (kcal)": st.column_config.NumberColumn("Calories (kcal)", min_value=0, step=1, required=True),
+                    "Delete": st.column_config.CheckboxColumn("Delete?", default=False)
+                },
+                use_container_width=True,
+                key=f"hist_editor_{q_start}_{q_end}"
+            )
+            
+            # Check for changes
+            is_deleted = edited_hist_df["Delete"].any()
+            remaining_edited = edited_hist_df[~edited_hist_df["Delete"]].copy()
+            
+            # Compare remaining entries to original UI dataframe to detect edits
+            merged = pd.merge(df_hist_ui, remaining_edited, on="id", suffixes=("_orig", "_edit"))
+            modified_mask = (
+                (merged["Food Name_orig"] != merged["Food Name_edit"]) |
+                (merged["Meal Type_orig"] != merged["Meal Type_edit"]) |
+                (merged["Calories (kcal)_orig"] != merged["Calories (kcal)_edit"])
+            )
+            has_modifications = modified_mask.any()
+            
+            # Calculate sum total dynamically from the editor grid (excluding deleted rows)
+            total_range_cals = remaining_edited["Calories (kcal)"].sum()
             st.markdown(f"**Total Calorie Intake in Range:** {total_range_cals} kcal")
+            
+            if is_deleted or has_modifications:
+                st.warning("⚠️ Pending unsaved changes detected in the historical log editor grid. Click 'Save Changes to Database' to submit updates.")
+                if st.button("Save Changes to Database", key="save_hist_changes", use_container_width=True):
+                    with st.spinner("Synchronizing changes with database..."):
+                        try:
+                            # 1. Process Deletions
+                            deleted_rows = edited_hist_df[edited_hist_df["Delete"]]
+                            if not deleted_rows.empty:
+                                delete_ids = deleted_rows["id"].astype(int).tolist()
+                                supabase_client.table("food_logs").delete().in_("id", delete_ids).execute()
+                            
+                            # 2. Process Cell Modifications
+                            modified_rows = merged[modified_mask]
+                            for _, row in modified_rows.iterrows():
+                                supabase_client.table("food_logs").update({
+                                    "food_name": row["Food Name_edit"],
+                                    "meal_type": row["Meal Type_edit"],
+                                    "calories": int(row["Calories (kcal)_edit"])
+                                }).eq("id", int(row["id"])).execute()
+                                
+                            st.cache_data.clear()
+                            st.success("Historical logs successfully updated in database!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Failed to synchronize database updates: {e}")
         else:
             st.info("No food logs found for the selected date range.")
