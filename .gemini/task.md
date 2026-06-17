@@ -1,0 +1,66 @@
+# Task Checklist: Supabase & Gemini Nutrition Tracker
+
+- [x] Setup and Installation
+    - [x] Install python packages (`streamlit`, `supabase`, `google-genai`, `pandas`, `pydantic`)
+    - [x] Create template for `.streamlit/secrets.toml`
+- [x] Authentication System
+    - [x] Initialize Supabase client with caching (`st.cache_resource`)
+    - [x] Build Login & Registration screen using `supabase.auth`
+    - [x] Manage user session state in `st.session_state`
+- [x] Onboarding Guard
+    - [x] Check if profile exists for logged-in user
+    - [x] Build Onboarding Form for Target Calories and Target Weight if missing
+    - [x] Prevent dashboard rendering until profile is saved to database
+- [x] UI Shell & Styling
+    - [x] Custom CSS injects for visual design and premium dark theme
+    - [x] Setup multi-tab navigation (`Log Intake`, `History & Insights`)
+- [x] Page 1: Log Intake
+    - [x] Date picker default to today
+    - [x] Smart Input: text area for logging meals
+    - [x] Gemini Parsing Engine using `google-genai` structured outputs + Pydantic validation
+    - [x] Editable Grid (`st.data_editor`) with add, modify, delete options
+    - [x] Recalculation utility for live data editor states
+    - [x] Bulk submit food logs to Supabase
+    - [x] Weight input field that logs to `weight_logs`
+    - [x] Real-time context banner with dynamic single-sentence tip using Gemini
+- [x] Page 2: History & Insights
+    - [x] Time-series aggregations (Day, Week, Month) using SQL/pandas
+    - [x] Streamlit native chart renderings
+    - [x] Weekly average calories vs weight logs overlap trend chart
+    - [x] Gemini recommendation engine using condensed metrics
+- [x] Verification and Polish
+    - [x] Handle null/empty history logs states with beautiful placeholders
+    - [x] Perform integration verification
+- [x] Feature Enhancements (Points 1, 3, 5)
+    - [x] Multimodal Photo Logging (st.file_uploader + Gemini Vision parsing)
+    - [x] Consistency Streaks badge in Sidebar (calculates days tracked from db)
+    - [x] Weight target date forecasting (linear regression projection in Plotly)
+- [x] Bug Fixes & Reset Button (Current Task)
+    - [x] Move uploader key initialization globally in `app.py`
+    - [x] Add Reset Parser & Grid button in three-column layout in `app.py`
+    - [x] Verify image uploading & reset button manually and clean up (Compiled successfully; browser test skipped due to CDP environment issue)
+- [x] Confirm Reset Dialog & Responsive Sidebar Credits
+    - [x] Add `@st.dialog` confirmation modal for reset button in `app.py`
+    - [x] Create responsive CSS `.sidebar-footer-spacer` and update sidebar in `app.py`
+    - [x] Verify compiling and test
+- [x] Fix Empty Weight Chart rendering on History Page
+    - [x] Update Daily, Weekly, and Monthly weight charts to check data count and fall back to scatter_chart if 1 point
+    - [x] Standardize bar and line charts in History & Insights to use x and y dataframe parameters
+    - [x] Verify compiling and test
+- [x] Add User Food Preferences & Exclusions
+    - [x] Update `generate_eating_tip` function and call to incorporate preferences
+    - [x] Add preference checkboxes to Onboarding Form and include list in database insert payload
+    - [x] Show selected preferences in the sidebar info section
+    - [x] Add preference checkboxes to Update Goals form and include list in database update payload
+    - [x] Update AI Health Coach prompt to include and comply with preferences
+    - [x] Verify compiling and test
+- [x] Add Historical Food Log Table
+    - [x] Insert date range query input and styling under Daily Logs tab in `app.py`
+    - [x] Execute Supabase fetch query filtered by range dates
+    - [x] Display clean data table and calorie sum summary
+    - [x] Verify compiling and test
+- [x] Remove Hour Ticks from History Charts
+    - [x] Format date axes as strings (`%Y-%m-%d`) in Daily Logs charts in `app.py`
+    - [x] Format date axes as strings in Weekly Averages charts in `app.py`
+    - [x] Format date axes as strings in Monthly Trends charts in `app.py`
+    - [x] Verify compiling and test
