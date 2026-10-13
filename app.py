@@ -643,7 +643,7 @@ def generate_eating_tip(target: int, logged: int, remaining: int, food_preferenc
             "Do not use markdown formatting, bolding, or introductory text. Return only the single sentence."
         )
         response = client.models.generate_content(
-            model='gemini-3.5-flash',
+            model='gemini-3.8-flash',
             contents=prompt,
         )
         return response.text.strip()
@@ -717,7 +717,7 @@ with tab_log:
             if not meal_description.strip() and not uploaded_file:
                 st.warning("Please enter a text description or upload a meal image before parsing.")
             else:
-                with st.spinner("Analyzing input with Gemini 3.5 Flash..."):
+                with st.spinner("Analyzing input with Gemini 3.8 Flash..."):
                     try:
                         client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
                         
@@ -737,7 +737,7 @@ with tab_log:
                         contents.append(prompt)
                         
                         response = client.models.generate_content(
-                            model='gemini-3.5-flash',
+                            model='gemini-3.8-flash',
                             contents=contents,
                             config=types.GenerateContentConfig(
                                 response_mime_type="application/json",
@@ -1277,7 +1277,7 @@ with tab_insights:
                     )
                     
                     response = client.models.generate_content(
-                        model='gemini-2.5-flash',
+                        model='gemini-3.8-flash',
                         contents=f"{system_prompt}\n\nUser Data Summary:\n{summary_payload}",
                     )
                     

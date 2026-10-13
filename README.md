@@ -8,7 +8,7 @@ ByteSize is a mobile-responsive, theme-adaptive Streamlit application designed f
 
 ### 1. 🧠 Smart AI Meal Parser (Multimodal)
 - **Text & Photo Inputs**: Describe what you ate in plain English (e.g., *"2 scrambled eggs and a slice of sourdough toast for breakfast"*) or upload a meal image directly.
-- **Structured Extraction**: Gemini 3.5 Flash processes inputs and returns structured JSON (validated using strict Pydantic schemas) containing food items, portions, and calories.
+- **Structured Extraction**: Gemini 3.8 Flash processes inputs and returns structured JSON (validated using strict Pydantic schemas) containing food items, portions, and calories.
 - **Editable Spreadsheet Grid**: Refine food logs, adjust serving sizes, delete items, and recalculate totals in real time before bulk submitting to the database.
 
 ### 2. ⚖️ Weight Tracker & Interactive Forecast
